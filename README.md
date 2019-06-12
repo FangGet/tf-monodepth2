@@ -10,7 +10,7 @@ This is tensorflow(unofficial) implementation for the method in
 
 Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner)
 
-If you find our work useful in your research please consider citing author's paper:
+If you find this work useful in your research please consider citing author's paper:
 
 ```
 @article{monodepth2,
@@ -30,6 +30,7 @@ This codebase was developed and tested with Tensorflow 1.6.0, CUDA 8.0 and Ubunt
 Assuming a fresh [Anaconda](https://www.anaconda.com/download/) distribution, you can install the dependencies with:
 ```shell
 conda env create -f environment.yml
+conda activate tf-monodepth2
 ```
 
 ## Preparing training data
