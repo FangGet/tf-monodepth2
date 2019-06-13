@@ -8,7 +8,7 @@ This is tensorflow(unofficial) implementation for the method in
 >
 > [arXiv 2018](https://arxiv.org/abs/1806.01260)
 
-Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner)
+Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner) and [SuperPoint](https://github.com/rpautrat/SuperPoint)
 
 If you find this work useful in your research please consider citing author's paper:
 
