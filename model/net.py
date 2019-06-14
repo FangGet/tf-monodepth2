@@ -76,7 +76,7 @@ class Net(object):
 
                 pose_conv1 = self._conv(res18_concat,3, 256, 1, name='pose_conv1')
                 pose_conv2 = self._conv(pose_conv1, 3, 256, 1, name='pose_conv2')
-                pose_conv3 = slim.conv2d(pose_conv2, 1,  2 * 6, stride=1, scope='pose_conv3', activation_fn=None)
+                pose_conv3 = slim.conv2d(pose_conv2, 2 * 6, 1, stride=1, scope='pose_conv3', activation_fn=None)
 
                 pose_final = tf.reduce_mean(pose_conv3, [1,2], keepdims=True)
                 pose_final = tf.reshape(pose_final, [self.batch_size, 2, 6])
@@ -90,7 +90,7 @@ class Net(object):
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
                                 weights_regularizer=slim.l2_regularizer(0.01),
-                                weights_initializer=tf.truncated_normal_initializer(0.05),
+                                weights_initializer=tf.keras.initializers.he_normal(),
                                 activation_fn=None,
                                 outputs_collections=end_points_collection):
                 print('Building ResNet-18 Model')
@@ -177,7 +177,13 @@ class Net(object):
         return x
 
     def _bn(self, x):
-        x = slim.batch_norm(x,scale=True, epsilon=self.epsilon, updates_collections=None, is_training=self.is_training)
+        param_initializers={
+            "beta": tf.zeros_initializer(),
+            "gamma": tf.ones_initializer(),
+            "moving_mean":tf.zeros_initializer(),,
+            "moving_variance":tf.ones_initializer()
+        }
+        x = slim.batch_norm(x,scale=True, param_initializers=param_initializers, epsilon=self.epsilon, updates_collections=None, is_training=self.is_training)
         return x
 
     def _activate(self, x, type='relu', name='relu'):

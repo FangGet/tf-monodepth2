@@ -1,4 +1,4 @@
-# tf-Monodepth2
+# tf-monodepth2
 
 This is tensorflow(unofficial) implementation for the method in
 

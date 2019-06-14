@@ -24,6 +24,8 @@ class MonoDepth2Learner(object):
         self.summary_freq = self.config['model']['summary_freq']
 
     def preprocess_image(self, image):
+        image /= 255.
+        image = (image - 0.45) / 0.225
         return image
 
     def compute_reprojection_loss(self, reproj_image, tgt_image):
@@ -58,7 +60,6 @@ class MonoDepth2Learner(object):
 
     def get_smooth_loss(self, disp, img):
         disp = disp / ( tf.reduce_mean(disp, [1, 2], keepdims=True) + 1e-7)
-        #disp =  (mean_disp + 1e-7)
 
         grad_disp_x = tf.abs(disp[:, :-1, :, :] - disp[:, 1:, :, :])
         grad_disp_y = tf.abs(disp[:, :, :-1, :] - disp[:, :, 1:, :])
