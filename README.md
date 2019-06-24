@@ -68,7 +68,7 @@ Code for finetuning from ResNet-18 model will be updated later.
 - [x] Auto-Mask loss described in paper
 - [x] ResNet-18 Pretrained Model code
 - [x] Testing part(to be uploaded)
-- []stereo and mono+stereo training
+- [ ] stereo and mono+stereo training
 
 
 
