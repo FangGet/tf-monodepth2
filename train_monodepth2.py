@@ -19,7 +19,10 @@ def _cli_train(config, output_dir, args):
     print('Monodepth2 Training Done ...')
 
 def _cli_test(config, output_dir, args):
-    pass
+    monodepth2_learner = MonoDepth2Learner(**config)
+    monodepth2_learner.test(output_dir)
+
+    print('Monodepth2 Test Done ...')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -5,29 +5,31 @@ import numpy as np
 import tensorflow as tf
 
 class DataLoader(object):
-    def __init__(self, **config):
+    def __init__(self, trainable=True, **config):
         self.config = config
         self.dataset_dir = self.config['dataset']['root_dir']
-        self.batch_size = np.int(self.config['model']['batch_size'])
+        self.batch_size = np.int(self.config['model']['batch_size']) if trainable else 1
         self.img_height = np.int(self.config['dataset']['image_height'])
         self.img_width = np.int(self.config['dataset']['image_width'])
         self.num_source = np.int(self.config['model']['num_source']) - 1
         self.num_scales = np.int(self.config['model']['num_scales'])
 
-    def load_train_batch(self):
+        self.trainable = trainable
+
+    def load_batch(self):
         """Load a batch of training instances.
         """
         seed = random.randint(0, 2**31 - 1)
         # Load the list of training files into queues
-        file_list = self.format_file_list(self.dataset_dir, 'train')
+        file_list = self.format_file_list(self.dataset_dir, 'train' if self.trainable else 'val')
         image_paths_queue = tf.train.string_input_producer(
             file_list['image_file_list'],
             seed=seed,
-            shuffle=True)
+            shuffle=True if self.trainable else False)
         cam_paths_queue = tf.train.string_input_producer(
             file_list['cam_file_list'],
             seed=seed,
-            shuffle=True)
+            shuffle=True if self.trainable else False)
         self.steps_per_epoch = int(
             len(file_list['image_file_list'])//self.batch_size)
 

@@ -21,7 +21,9 @@ class MonoDepth2Learner(object):
         self.total_epoch = np.int(self.config['model']['epoch'])
         self.beta1 = np.float(self.config['model']['beta1'])
         self.continue_ckpt = self.config['model']['continue_ckpt']
+        self.torch_res18_ckpt = self.config['model']['torch_res18_ckpt']
         self.summary_freq = self.config['model']['summary_freq']
+        self.auto_mask = self.config['model']['auto_mask']
 
     def preprocess_image(self, image):
         image /= 255.
@@ -60,6 +62,7 @@ class MonoDepth2Learner(object):
 
     def get_smooth_loss(self, disp, img):
         disp = disp / ( tf.reduce_mean(disp, [1, 2], keepdims=True) + 1e-7)
+        #disp =  (mean_disp + 1e-7)
 
         grad_disp_x = tf.abs(disp[:, :-1, :, :] - disp[:, 1:, :, :])
         grad_disp_y = tf.abs(disp[:, :, :-1, :] - disp[:, :, 1:, :])
@@ -75,12 +78,65 @@ class MonoDepth2Learner(object):
 
         return tf.reduce_mean(smoothness_x) + tf.reduce_mean(smoothness_y)
 
-    def build_train(self):
-        loader = DataLoader(**self.config)
+    def build_test(self):
+        loader = DataLoader(trainable=False, **self.config)
         self.num_scales = loader.num_scales
         self.num_source = loader.num_source
         with tf.name_scope('data_loading'):
-            tgt_image, src_image_stack, tgt_image_aug, src_image_stack_aug, intrinsics = loader.load_train_batch()
+            tgt_image, src_image_stack, tgt_image_aug, src_image_stack_aug, intrinsics = loader.load_batch()
+            tgt_image = tf.image.convert_image_dtype(tgt_image, dtype=tf.float32)
+            tgt_image_aug = tf.image.convert_image_dtype(tgt_image_aug, dtype=tf.float32)
+            src_image_stack_aug = tf.image.convert_image_dtype(src_image_stack_aug, dtype=tf.float32)
+            if self.preprocess:
+                tgt_image_net = self.preprocess_image(tgt_image_aug)
+                src_image_stack_net = self.preprocess_image(src_image_stack_aug)
+            else:
+                tgt_image_net = tgt_image_aug
+                src_image_stack_net = src_image_stack_aug
+
+        # with tf.name_scope('data_loading'):
+        #     tgt_image_uint8 = tf.placeholder(tf.uint8, [loader.batch_size, loader.img_height, loader.img_width, 3])
+        #     src_image_stack_uint8 = tf.placeholder(tf.uint8, [loader.batch_size, loader.img_height, loader.img_width, 3 * loader.num_source])
+        #     tgt_image = tf.image.convert_image_dtype(tgt_image_uint8, dtype=tf.float32)
+        #     src_image_stack = tf.image.convert_image_dtype(src_image_stack_uint8, dtype=tf.float32)
+        #     if self.preprocess:
+        #         tgt_image_net = self.preprocess_image(tgt_image)
+        #         src_image_stack_net = self.preprocess_image(src_image_stack)
+        #     else:
+        #         tgt_image_net = tgt_image
+        #         src_image_stack_net = src_image_stack
+
+        with tf.variable_scope('monodepth2_model', reuse=tf.AUTO_REUSE) as scope:
+            net_builder = Net(True, **self.config)
+            num_source = np.int(src_image_stack_net.get_shape().as_list()[-1] // 3)
+            assert num_source == 2
+            res18_tc, skips_tc = net_builder.build_resnet18(tgt_image_net)
+            res18_tp, _ = net_builder.build_resnet18(src_image_stack_net[:, :, :, :3])
+            res18_tn, _ = net_builder.build_resnet18(src_image_stack_net[:, :, :, 3:])
+
+            pred_poses = net_builder.build_pose_net(res18_tp, res18_tc, res18_tn)
+
+            pred_disp = net_builder.build_disp_net(res18_tc, skips_tc)
+
+            H = tgt_image.get_shape().as_list()[1]
+            W = tgt_image.get_shape().as_list()[2]
+
+            pred_disp_rawscale = [tf.image.resize_bilinear(pred_disp[i], [loader.img_height, loader.img_width]) for i in
+                                  range(self.num_scales)]
+            pred_depth_rawscale = disp_to_depth(pred_disp_rawscale, self.min_depth, self.max_depth)
+
+        # Collect tensors that are useful later (e.g. tf summary)
+        self.pred_depth = pred_depth_rawscale[0]
+        self.pred_disp = pred_disp
+        self.pred_poses = pred_poses
+
+
+    def build_train(self):
+        loader = DataLoader(trainable=True, **self.config)
+        self.num_scales = loader.num_scales
+        self.num_source = loader.num_source
+        with tf.name_scope('data_loading'):
+            tgt_image, src_image_stack, tgt_image_aug, src_image_stack_aug, intrinsics = loader.load_batch()
             tgt_image = tf.image.convert_image_dtype(tgt_image, dtype=tf.float32)
             src_image_stack = tf.image.convert_image_dtype(src_image_stack, dtype=tf.float32)
             tgt_image_aug = tf.image.convert_image_dtype(tgt_image_aug, dtype=tf.float32)
@@ -121,6 +177,10 @@ class MonoDepth2Learner(object):
             pixel_losses = 0.
             smooth_losses = 0.
             total_loss = 0.
+            if self.auto_mask:
+                pred_auto_masks = []
+                #proj_image_scale0 = []
+                #proj_error_scale0 = []
             for s in range(loader.num_scales):
                 reprojection_losses = []
                 for i in range(num_source):
@@ -129,6 +189,11 @@ class MonoDepth2Learner(object):
                                                               pred_poses[:,i,:],
                                                               intrinsics=intrinsics[:,0,:,:])
                     curr_proj_error = tf.abs(curr_proj_image - tgt_image)
+
+                    #if self.auto_mask and s == 0:
+                        #proj_image_scale0.append(curr_proj_image)
+                    #    proj_error_scale0.append(curr_proj_error)
+
                     reprojection_losses.append(self.compute_reprojection_loss(curr_proj_image, tgt_image))
 
                     if i == 0:
@@ -139,7 +204,24 @@ class MonoDepth2Learner(object):
                         proj_error_stack = tf.concat([proj_error_stack,curr_proj_error], axis=3)
 
                 reprojection_losses = tf.concat(reprojection_losses, axis=3)
-                reprojection_loss = tf.reduce_mean(tf.reduce_min(reprojection_losses, axis=3))
+
+                combined = reprojection_losses
+                if self.auto_mask:
+                    identity_reprojection_losses = []
+                    for i in range(num_source):
+                        identity_reprojection_losses.append(self.compute_reprojection_loss(src_image_stack[:,:,:, 3*i:3*(i+1)], tgt_image))
+                    identity_reprojection_losses = tf.concat(identity_reprojection_losses, axis=3)
+
+                    identity_reprojection_losses += (tf.random_normal(identity_reprojection_losses.get_shape()) * 1e-5)
+
+                    combined = tf.concat([identity_reprojection_losses, reprojection_losses], axis=3)
+
+                    pred_auto_masks.append(tf.expand_dims(tf.cast(tf.argmin(combined, axis=3) > 1, tf.float32) * 255,-1))
+
+
+                reprojection_loss = tf.reduce_mean(tf.reduce_min(combined, axis=3))
+
+
 
                 pixel_losses += reprojection_loss
 
@@ -179,6 +261,8 @@ class MonoDepth2Learner(object):
         self.src_image_stack_all = src_image_stack_all
         self.proj_image_stack_all = proj_image_stack_all
         self.proj_error_stack_all = proj_error_stack_all
+        if self.auto_mask:
+            self.pred_auto_masks = pred_auto_masks
 
     def collect_summaries(self):
         tf.summary.scalar("total_loss", self.total_loss)
@@ -187,6 +271,8 @@ class MonoDepth2Learner(object):
         tf.summary.image('tgt_image',self.tgt_image_all[0])
         for s in range(self.num_scales):
             tf.summary.image('scale{}_disparity_image'.format(s), colorize(self.pred_disp[s],cmap='plasma'))
+            if self.auto_mask:
+                tf.summary.image('scale{}_automask_image'.format(s), self.pred_auto_masks[s])
             for i in range(self.num_source):
                 tf.summary.image('scale{}_projected_image_{}'.format (s, i),
                                  self.proj_image_stack_all[s][:, :, :, i * 3:(i + 1) * 3])
@@ -203,6 +289,11 @@ class MonoDepth2Learner(object):
         self.build_train()
         init = tf.global_variables_initializer()
         self.collect_summaries()
+
+        # load weights from pytorch resnet 18 model
+        if self.torch_res18_ckpt != '':
+            assign_ops = load_resnet18_from_file(self.torch_res18_ckpt)
+
         with tf.name_scope("parameter_count"):
             parameter_count = tf.reduce_sum([tf.reduce_prod(tf.shape(v)) for v in tf.trainable_variables()])
         self.saver = tf.train.Saver([var for var in tf.model_variables()] + [self.global_step],max_to_keep=10)
@@ -211,7 +302,7 @@ class MonoDepth2Learner(object):
         config.gpu_options.allow_growth = True
         with sv.managed_session(config=config) as sess:
             print('Trainable variables: ')
-            for var in tf.trainable_variables():
+            for var in tf.model_variables():
                 print(var.name)
             print("parameter_count =", sess.run(parameter_count))
             sess.run(init)
@@ -220,7 +311,8 @@ class MonoDepth2Learner(object):
                 print("Resume training from previous checkpoint: %s" % self.continue_ckpt)
                 self.saver.restore(sess, self.continue_ckpt)
 
-            # TODO add resnet 18 pretrained model
+            elif self.torch_res18_ckpt != '':
+                 sess.run(assign_ops)
 
             start_time = time.time()
             for step in range(1, self.total_step):
@@ -249,9 +341,33 @@ class MonoDepth2Learner(object):
                              results["loss"], results["pixel_loss"], results["smooth_loss"]))
                     start_time = time.time()
 
-                if step % (self.steps_per_epoch * 3) == 0:
+                if step % (self.steps_per_epoch * 2) == 0:
                     self.save(sess, ckpt_dir, gs)
             self.save(sess, ckpt_dir, 'latest')
+
+    def test(self, ckpt_dir):
+        self.build_test()
+
+        self.saver = tf.train.Saver([var for var in tf.model_variables()] + [self.global_step], max_to_keep=10)
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        with tf.Session(config=config) as sess:
+
+            if ckpt_dir == '':
+                print('No pretrained model provided, exit. ')
+                raise ValueError
+            self.saver.restore(sess, ckpt_dir)
+            import cv2
+            for step in range(1, self.total_step):
+                fetches = {
+                    'depth': self.pred_depth,
+                    'poses':self.pred_poses
+                }
+
+                results = sess.run(fetches)
+                cv2.imshow('depth',gray2rgb(results['depth']))
+                cv2.waitKey(5)
+
 
     def save(self, sess, checkpoint_dir, step):
         model_name = 'model'

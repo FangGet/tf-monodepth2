@@ -1,12 +1,12 @@
 dataset:
-    root_dir: ''
+    root_dir: '/media/fangloveskari/workspace/SLAM/depth_estimation/tf-monodepth2/train_data/'
     image_height: 128
     image_width: 416
     min_depth: 0.1
     max_depth: 100.
     preprocess: True
 model:
-    root_dir: ''
+    root_dir: '/media/fangloveskari/workspace/SLAM/depth_estimation/tf-monodepth2/log/'
     learning_rate: 1e-4
     batch_size: 12
     num_source: 3
@@ -18,5 +18,8 @@ model:
     batch_norm_decay: 0.95
     batch_norm_epsilon: 1e-5
     pose_scale: 1e-2
+    auto_mask: True
     continue_ckpt: ''
+    #torch_res18_ckpt: ''
+    torch_res18_ckpt: '/media/fangloveskari/workspace/SLAM/depth_estimation/tf-monodepth2/res_model_extractor/resnet18.npy'
     summary_freq: 200

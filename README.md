@@ -65,10 +65,10 @@ Code for finetuning from ResNet-18 model will be updated later.
   - https://github.com/dalgu90/resnet-18-tensorflow
 
 ## TODO
-- Auto-Mask loss described in paper(to be uploaded)
-- ResNet-18 Pretrained Model code(to be uploaded)
-- Testing part(to be uploaded)
-- stereo and mono+stereo training
+- [x] Auto-Mask loss described in paper
+- [x] ResNet-18 Pretrained Model code
+- [x] Testing part(to be uploaded)
+- []stereo and mono+stereo training
 
 
 

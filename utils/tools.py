@@ -1,6 +1,6 @@
 from __future__ import division
 import collections
-
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -334,3 +334,15 @@ def bilinear_sampler(imgs, coords):
         w10 * im10, w11 * im11
     ])
     return output
+
+def load_resnet18_from_file(res18_file):
+    res18_weights = np.load(res18_file,allow_pickle=True).item()
+    all_vars = tf.global_variables()
+    assign_ops = []
+    for v in all_vars:
+        if v.op.name == 'global_step' or 'encoder' not in v.op.name or 'Adam' in v.op.name:
+            continue
+        print('\t' + v.op.name)
+        assign_op = v.assign(res18_weights[v.op.name])
+        assign_ops.append(assign_op)
+    return assign_ops

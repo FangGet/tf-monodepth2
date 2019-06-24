@@ -22,8 +22,7 @@ class kitti_raw_loader(object):
         self.img_width = img_width
         self.seq_length = seq_length
         self.cam_ids = ['02', '03']
-        self.date_list = ['2011_09_26', '2011_09_28', '2011_09_29', 
-                          '2011_09_30', '2011_10_03']
+        self.date_list = ['2011_09_26','2011_09_28','2011_09_29','2011_09_30','2011_10_03']
         self.collect_static_frames(static_frames_file)
         self.collect_train_frames()
 

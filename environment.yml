@@ -3,7 +3,6 @@ dependencies:
     - python=3.6
     - numpy
     - pyyaml
-    - pillow
     - tensorflow-gpu=1.6
     - matplotlib
     - scipy

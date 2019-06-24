@@ -7,7 +7,7 @@ class Net(object):
     def __init__(self,is_training, **config):
         self.decay = np.float( config['model']['batch_norm_decay'])
         self.epsilon = np.float(config['model']['batch_norm_epsilon'])
-        self.batch_size = np.int(config['model']['batch_size'])
+        self.batch_size = np.int(config['model']['batch_size']) if is_training else 1
         self.pose_scale = np.float(config['model']['pose_scale'])
         self.W = np.int(config['dataset']['image_width'])
         self.H= np.int(config['dataset']['image_height'])
@@ -67,6 +67,7 @@ class Net(object):
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
                                 weights_regularizer=slim.l2_regularizer(0.01),
+                                weights_initializer=tf.contrib.layers.xavier_initializer(),
                                 activation_fn=tf.nn.relu,
                                 outputs_collections=end_points_collection):
                 res18_tp_ = self._conv(res18_tp, 1, 256, 1, name='res18_tp')
@@ -91,6 +92,7 @@ class Net(object):
                                 normalizer_fn=None,
                                 weights_regularizer=slim.l2_regularizer(0.01),
                                 weights_initializer=tf.keras.initializers.he_normal(),
+                                biases_initializer=None,
                                 activation_fn=None,
                                 outputs_collections=end_points_collection):
                 print('Building ResNet-18 Model')
@@ -177,12 +179,14 @@ class Net(object):
         return x
 
     def _bn(self, x):
-        param_initializers={
+
+        param_initializers = {
             "beta": tf.zeros_initializer(),
             "gamma": tf.ones_initializer(),
-            "moving_mean":tf.zeros_initializer(),,
-            "moving_variance":tf.ones_initializer()
+            'moving_mean': tf.zeros_initializer(),
+            'moving_variance': tf.ones_initializer()
         }
+
         x = slim.batch_norm(x,scale=True, param_initializers=param_initializers, epsilon=self.epsilon, updates_collections=None, is_training=self.is_training)
         return x
 
