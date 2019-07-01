@@ -20,11 +20,10 @@ class Net(object):
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
-                                weights_regularizer=slim.l2_regularizer(0.01),
                                 activation_fn=tf.nn.elu,
                                 outputs_collections=end_points_collection):
                 filters = [16, 32, 64, 128, 256]
-                # disp 4
+                # disp 5
                 iconv5 = self._conv_reflect(res18_tc, 3, filters[4], 1, 'iconv5')
                 iconv5_upsample = tf.image.resize_nearest_neighbor(iconv5, [np.int(self.H / 16), np.int(self.W / 16)])
                 iconv5_concat = tf.concat([iconv5_upsample, skips[0]], axis=3)
@@ -37,7 +36,7 @@ class Net(object):
                 upconv4 = self._conv_reflect(iconv4_concat,3, filters[3], 1, 'upconv4')
                 disp4 = self._conv_reflect(upconv4, 3, 1, 1, 'disp4', activation_fn=tf.nn.sigmoid)
 
-                # disp 2
+                # disp 3
                 iconv3 = self._conv_reflect(upconv4,3, filters[2], 1, 'iconv3')
                 iconv3_upsample = tf.image.resize_nearest_neighbor(iconv3, [np.int(self.H / 4), np.int(self.W / 4)])
                 iconv3_concat = tf.concat([iconv3_upsample, skips[2]], axis=3)
@@ -66,8 +65,6 @@ class Net(object):
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
-                                weights_regularizer=slim.l2_regularizer(0.01),
-                                weights_initializer=tf.contrib.layers.xavier_initializer(),
                                 activation_fn=tf.nn.relu,
                                 outputs_collections=end_points_collection):
                 res18_tp_ = self._conv(res18_tp, 1, 256, 1, name='res18_tp')
@@ -90,7 +87,6 @@ class Net(object):
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
-                                weights_regularizer=slim.l2_regularizer(0.01),
                                 weights_initializer=tf.keras.initializers.he_normal(),
                                 biases_initializer=None,
                                 activation_fn=None,
@@ -179,15 +175,7 @@ class Net(object):
         return x
 
     def _bn(self, x):
-
-        param_initializers = {
-            "beta": tf.zeros_initializer(),
-            "gamma": tf.ones_initializer(),
-            'moving_mean': tf.zeros_initializer(),
-            'moving_variance': tf.ones_initializer()
-        }
-
-        x = slim.batch_norm(x,scale=True, param_initializers=param_initializers, epsilon=self.epsilon, updates_collections=None, is_training=self.is_training)
+        x = slim.batch_norm(x,scale=True,decay=self.decay,epsilon=self.epsilon, updates_collections=None)
         return x
 
     def _activate(self, x, type='relu', name='relu'):

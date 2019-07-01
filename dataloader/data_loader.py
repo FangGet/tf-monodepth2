@@ -16,6 +16,8 @@ class DataLoader(object):
 
         self.trainable = trainable
 
+
+
     def load_batch(self):
         """Load a batch of training instances.
         """
