@@ -8,6 +8,10 @@ This is tensorflow(unofficial) implementation for the method in
 >
 > [arXiv 2018](https://arxiv.org/abs/1806.01260)
 
+<p align="center">
+  <img src="assets/tf-monodepth2.gif" alt="example input output gif" width="600" />
+</p>
+
 Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner) and [SuperPoint](https://github.com/rpautrat/SuperPoint)
 
 If you find this work useful in your research please consider citing author's paper:
@@ -49,7 +53,16 @@ First of all, set dataset/saved_log path at monodepth2_kitti.yml
 python train_monodepth2.py train config/monodepth2_kitti.yml your_saved_model_name
 ```
 
-Code for finetuning from ResNet-18 model will be updated later.
+<p align="center">
+  <img src="assets/tf-monodepth2.png" alt="example training log image" width="600" />
+</p>
+
+## Testing
+```
+python train_monodepth2.py test config/monodepth2_kitti.yml your_pretrained_model_name
+```
+
+pretrained model download link: [monodepth2_416*128_mono](https://drive.google.com/file/d/1oALNcevZSEvDHkjF1NX1Jf7JExWW52k-/view)
 
 ## Reference Codes
 - Monodepth2
@@ -67,7 +80,7 @@ Code for finetuning from ResNet-18 model will be updated later.
 ## TODO
 - [x] Auto-Mask loss described in paper
 - [x] ResNet-18 Pretrained Model code
-- [x] Testing part(to be uploaded)
+- [x] Testing part
 - [ ] stereo and mono+stereo training
 
 
