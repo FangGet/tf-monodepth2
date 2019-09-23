@@ -25,8 +25,8 @@ def dict_update(d, u):
     return d
 
 def disp_to_depth(disp, min_depth, max_depth):
-    min_disp = 1 / max_depth
-    max_disp = 1 / min_depth
+    min_disp = 1. / max_depth
+    max_disp = 1. / min_depth
     scaled_disp = tf.to_float(min_disp) + tf.to_float(max_disp - min_disp) * disp
     depth = tf.to_float(1.) / scaled_disp
     return depth
@@ -65,8 +65,10 @@ def normalize_depth_for_display(depth, pc=95, crop_percent=0, normalizer=None, c
         depth = depth/(np.percentile(depth, pc) + 1e-6)
     depth = np.clip(depth, 0, 1)
     depth = gray2rgb(depth, cmap=cmap)
+    print(depth.shape)
     keep_H = int(depth.shape[0] * (1-crop_percent))
     depth = depth[:keep_H]
+
     depth = depth
     return depth
 
@@ -276,7 +278,7 @@ def bilinear_sampler(imgs, coords):
     zero = tf.zeros([1], dtype='float32')
     half = tf.constant([0.5], tf.float32)
 
-    coords_x = tf.clip_by_value(coords_x, half, x_max - half )
+    coords_x = tf.clip_by_value(coords_x, half, x_max - half)
     coords_y = tf.clip_by_value(coords_y, half, y_max - half)
 
     x0 = tf.floor(coords_x)
@@ -343,6 +345,17 @@ def load_resnet18_from_file(res18_file):
         if v.op.name == 'global_step' or 'encoder' not in v.op.name or 'Adam' in v.op.name:
             continue
         print('\t' + v.op.name)
-        assign_op = v.assign(res18_weights[v.op.name])
+        if 'pose_encoder/conv1/conv1/' in v.op.name:
+            new_op_name = v.op.name.replace('pose_','')
+            pose_conv1_weight = np.concatenate((res18_weights[new_op_name],res18_weights[new_op_name]), axis=2) / 2
+            assign_op = v.assign(pose_conv1_weight)
+        elif 'pose_encoder' in v.op.name:
+            new_op_name = v.op.name.replace('pose_','')
+            assign_op = v.assign(res18_weights[new_op_name])
+        else:
+            assign_op = v.assign(res18_weights[v.op.name])
+
+
+        #assign_op = v.assign(res18_weights[v.op.name])
         assign_ops.append(assign_op)
     return assign_ops

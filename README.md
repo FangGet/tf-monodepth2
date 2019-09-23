@@ -1,5 +1,7 @@
 # tf-monodepth2
 
+<b>Update:</b>  <font color="red">2019-09-23: 1) modify pose decoder to be consistent with original monodepth2; 2)add evaluate code for estimated depth</font>
+
 This is tensorflow(unofficial) implementation for the method in
 
 > **Digging into Self-Supervised Monocular Depth Prediction**
@@ -50,7 +52,7 @@ python data/prepare_train_data.py --dataset_dir=/path/to/raw/kitti/dataset/ --da
 First of all, set dataset/saved_log path at monodepth2_kitti.yml
 
 ```shell
-python train_monodepth2.py train config/monodepth2_kitti.yml your_saved_model_name
+python monodepth2.py train config/monodepth2_kitti.yml your_saved_model_name
 ```
 
 <p align="center">
@@ -59,10 +61,28 @@ python train_monodepth2.py train config/monodepth2_kitti.yml your_saved_model_na
 
 ## Testing
 ```
-python train_monodepth2.py test config/monodepth2_kitti.yml your_pretrained_model_name
+python monodepth2.py test config/monodepth2_kitti.yml your_pretrained_model_name
 ```
 
-pretrained model download link: [monodepth2_416*128_mono](https://drive.google.com/file/d/1oALNcevZSEvDHkjF1NX1Jf7JExWW52k-/view)
+~~Pretrained model download link: [monodepth2_416*128_mono](https://drive.google.com/file/d/1oALNcevZSEvDHkjF1NX1Jf7JExWW52k-/view)~~
+<font color="red">Pretrained model will be uploaded soon. Former model is no longer suitable for this code.</font>
+
+## Evaluation
+* First we need to save predicted depth image into npy file
+```
+python monodepth2.py eval config/monodepth2_kitti_eval.yml your_pretrained_model_name depth
+```
+Save destination should be setted in monodepth2_kitti_eval.yml.
+* Then we use evaluation code to compute error result:
+```
+cd kitti_eval
+python2 eval_depth.py --kitti_dir=/your/kitti_data/path/ --pred_file=/your/save/depth/npy/path/ --test_file_list=../data/kitti/test_files_eigen.txt
+```
+Note: please use python2 to execute this bash.
+
+<font color="red">kitti_eval code from Zhou's SFMLearner</font>
+
+Pose evaluation code to be completed.
 
 ## Reference Codes
 - Monodepth2
@@ -81,6 +101,7 @@ pretrained model download link: [monodepth2_416*128_mono](https://drive.google.c
 - [x] Auto-Mask loss described in paper
 - [x] ResNet-18 Pretrained Model code
 - [x] Testing part
+- [ ] Evaluation for pose estimation
 - [ ] stereo and mono+stereo training
 
 

@@ -24,6 +24,10 @@ def _cli_test(config, output_dir, args):
 
     print('Monodepth2 Test Done ...')
 
+def _cli_eval(config, ckpt_name, args):
+    monodepth2_learner = MonoDepth2Learner(**config)
+    monodepth2_learner.eval(ckpt_name,args.eval_type)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest='command')
@@ -34,11 +38,18 @@ if __name__ == '__main__':
     p_train.add_argument('ckpt_name', type=str)
     p_train.set_defaults(func=_cli_train)
 
-    # Evaluation command
-    p_train = subparsers.add_parser('test')
-    p_train.add_argument('config', type=str)
-    p_train.add_argument('ckpt_name', type=str)
-    p_train.set_defaults(func=_cli_test)
+    # Test command
+    p_test = subparsers.add_parser('test')
+    p_test.add_argument('config', type=str)
+    p_test.add_argument('ckpt_name', type=str)
+    p_test.set_defaults(func=_cli_test)
+
+    # Evaluate command
+    p_eval = subparsers.add_parser('eval')
+    p_eval.add_argument('config',type=str)
+    p_eval.add_argument('ckpt_name',type=str)
+    p_eval.add_argument('eval_type',type=str,default='depth',help='pose,depth')
+    p_eval.set_defaults(func=_cli_eval)
 
     args = parser.parse_args()
     with open(args.config, 'r') as f:

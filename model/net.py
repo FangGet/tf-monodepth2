@@ -5,13 +5,14 @@ import numpy as np
 
 class Net(object):
     def __init__(self,is_training, **config):
+        self.is_training = is_training
         self.decay = np.float( config['model']['batch_norm_decay'])
         self.epsilon = np.float(config['model']['batch_norm_epsilon'])
         self.batch_size = np.int(config['model']['batch_size']) if is_training else 1
         self.pose_scale = np.float(config['model']['pose_scale'])
         self.W = np.int(config['dataset']['image_width'])
         self.H= np.int(config['dataset']['image_height'])
-        self.is_training = is_training
+
 
 
     def build_disp_net(self, res18_tc, skips):
@@ -20,6 +21,7 @@ class Net(object):
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
+                                weights_initializer=tf.keras.initializers.he_normal(),
                                 activation_fn=tf.nn.elu,
                                 outputs_collections=end_points_collection):
                 filters = [16, 32, 64, 128, 256]
@@ -59,6 +61,27 @@ class Net(object):
 
                 return [disp1, disp2, disp3, disp4]
 
+    def build_pose_net2(self, res18):
+        print('Building Pose Decoder Model')
+        with tf.variable_scope('pose_decoder', reuse=tf.AUTO_REUSE) as scope:
+            end_points_collection = scope.original_name_scope + '_end_points'
+            with slim.arg_scope([slim.conv2d],
+                                normalizer_fn=None,
+                                weights_initializer=tf.keras.initializers.he_normal(),
+                                activation_fn=tf.nn.relu,
+                                outputs_collections=end_points_collection):
+                res18_concat = self._conv(res18, 1, 256, 1, name='pose_conv0')
+
+                pose_conv1 = self._conv(res18_concat, 3, 256, 1, name='pose_conv1')
+                pose_conv2 = self._conv(pose_conv1, 3, 256, 1, name='pose_conv2')
+                pose_conv3 = slim.conv2d(pose_conv2, 6, 1, stride=1, scope='pose_conv3', activation_fn=None)
+
+                pose_final = tf.reduce_mean(pose_conv3, [1, 2], keepdims=True)
+                pose_final = tf.reshape(pose_final, [self.batch_size, 1, 6])
+                pose_final = tf.to_float(self.pose_scale) * pose_final
+
+                return pose_final
+
     def build_pose_net(self, res18_tp, res18_tc, res18_tn):
         print('Building Pose Decoder Model')
         with tf.variable_scope('pose_decoder', reuse=tf.AUTO_REUSE) as scope:
@@ -82,8 +105,8 @@ class Net(object):
 
                 return pose_final
 
-    def build_resnet18(self, x):
-        with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE) as scope:
+    def build_resnet18(self, x, prefix=''):
+        with tf.variable_scope('{}encoder'.format(prefix), reuse=tf.AUTO_REUSE) as scope:
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
