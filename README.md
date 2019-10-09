@@ -1,6 +1,10 @@
 # tf-monodepth2
 
-<b>Update:</b>  <font color="red">2019-09-23: 1) modify pose decoder to be consistent with original monodepth2; 2)add evaluate code for estimated depth</font>
+<b>Update:</b>  <font color="red">2019-10-09: 1) fix small bug to get better results; </font>
+
+<b>Right now, BatchNormalization is not fixed, we evaluate depth with is_training = True, trying to fix it!</b>
+
+Update:  <font color="red">2019-09-23: 1) modify pose decoder to be consistent with original monodepth2; 2)add evaluate code for estimated depth</font>
 
 This is tensorflow(unofficial) implementation for the method in
 
@@ -29,7 +33,19 @@ If you find this work useful in your research please consider citing author's pa
   year = {2018}
 }
 ```
+## Demonstration
+<p align="center">
+<a href="https://www.youtube.com/watch?v=TUgaPZgdEys
+" target="_blank"><img src="assets/depth_start.png"
+alt="demo for tf-monodepth2" width="720" height="540" /></a>
+</p>
+
+
+
+
+
 ## Prerequisites
+
 This codebase was developed and tested with Tensorflow 1.6.0, CUDA 8.0 and Ubuntu 16.04.
 
 ## Setup
@@ -83,6 +99,10 @@ Note: please use python2 to execute this bash.
 <font color="red">kitti_eval code from Zhou's SFMLearner</font>
 
 Pose evaluation code to be completed.
+
+|  model_name  | abs_rel | sq_rel | rms | log_rms | δ<1.25 | δ<1.25^2 | δ<1.25^3 |
+|  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |
+| `mono_no_pt_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
 
 ## Reference Codes
 - Monodepth2

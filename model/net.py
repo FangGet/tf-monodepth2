@@ -2,13 +2,14 @@ from __future__ import division
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
+from tensorflow import layers as tfl
 
 class Net(object):
     def __init__(self,is_training, **config):
         self.is_training = is_training
         self.decay = np.float( config['model']['batch_norm_decay'])
         self.epsilon = np.float(config['model']['batch_norm_epsilon'])
-        self.batch_size = np.int(config['model']['batch_size']) if is_training else 1
+        self.batch_size = np.int(config['model']['batch_size']) 
         self.pose_scale = np.float(config['model']['pose_scale'])
         self.W = np.int(config['dataset']['image_width'])
         self.H= np.int(config['dataset']['image_height'])
@@ -193,12 +194,13 @@ class Net(object):
 
     def _conv_reflect(self, x, filter_size, out_channel, stride, name='conv', activation_fn=tf.nn.elu):
         pad_size = np.int(filter_size // 2)
-        pad_x = tf.pad(x,[[0,0], [pad_size, pad_size], [pad_size, pad_size], [0,0]])
+        pad_x = tf.pad(x,[[0,0], [pad_size, pad_size], [pad_size, pad_size], [0,0]], mode='REFLECT')
         x = slim.conv2d(pad_x, out_channel, [filter_size, filter_size], stride, padding='VALID', scope=name, activation_fn=activation_fn)
         return x
 
     def _bn(self, x):
-        x = slim.batch_norm(x,scale=True,decay=self.decay,epsilon=self.epsilon, updates_collections=None)
+        #x = slim.batch_norm(x,scale=True,decay=self.decay, epsilon=self.epsilon, is_training=True)#, updates_collections=None)
+        x = tfl.batch_normalization(x,momentum=self.decay,epsilon=self.epsilon,training=True, name='BatchNorm', fused=True,reuse=tf.AUTO_REUSE) 
         return x
 
     def _activate(self, x, type='relu', name='relu'):

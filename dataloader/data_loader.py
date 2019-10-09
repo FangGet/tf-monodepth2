@@ -8,7 +8,7 @@ class DataLoader(object):
     def __init__(self, trainable=True, **config):
         self.config = config
         self.dataset_dir = self.config['dataset']['root_dir']
-        self.batch_size = np.int(self.config['model']['batch_size']) if trainable else 1
+        self.batch_size = np.int(self.config['model']['batch_size']) 
         self.img_height = np.int(self.config['dataset']['image_height'])
         self.img_width = np.int(self.config['dataset']['image_width'])
         self.num_source = np.int(self.config['model']['num_source']) - 1
@@ -24,14 +24,8 @@ class DataLoader(object):
         seed = random.randint(0, 2**31 - 1)
         # Load the list of training files into queues
         file_list = self.format_file_list(self.dataset_dir, 'train' if self.trainable else 'val')
-        image_paths_queue = tf.train.string_input_producer(
-            file_list['image_file_list'],
-            seed=seed,
-            shuffle=True if self.trainable else False)
-        cam_paths_queue = tf.train.string_input_producer(
-            file_list['cam_file_list'],
-            seed=seed,
-            shuffle=True if self.trainable else False)
+        image_paths_queue = tf.train.string_input_producer(file_list['image_file_list'],seed=seed,shuffle=True if self.trainable else False)
+        cam_paths_queue = tf.train.string_input_producer(file_list['cam_file_list'],seed=seed,shuffle=True if self.trainable else False)
         self.steps_per_epoch = int(
             len(file_list['image_file_list'])//self.batch_size)
 
@@ -39,6 +33,7 @@ class DataLoader(object):
         img_reader = tf.WholeFileReader()
         _, image_contents = img_reader.read(image_paths_queue)
         image_seq = tf.image.decode_jpeg(image_contents)
+        # [H, W, 3] and [H, W, 3 * num_source]
         tgt_image, src_image_stack = \
             self.unpack_image_sequence(
                 image_seq, self.img_height, self.img_width, self.num_source)
@@ -63,6 +58,10 @@ class DataLoader(object):
         image_all = tf.concat([tgt_image, src_image_stack], axis=3)
         image_all, image_all_aug = self.data_augmentation(
             image_all)
+
+        tgt_image = image_all[:, :, :, :3]
+        src_image_stack = image_all[:, :, :, 3:]
+
         tgt_image_aug = image_all_aug[:, :, :, :3]
         src_image_stack_aug = image_all_aug[:, :, :, 3:]
         intrinsics = self.get_multi_scale_intrinsics(
@@ -82,10 +81,15 @@ class DataLoader(object):
 
     # edit at 05/26 by Frank
     # add random brightness, contrast, saturation and hue to all source image
+    # [H, W, (num_source + 1) * 3]
     def data_augmentation(self, im):
         def random_flip(im):
-            do_flip = tf.random_uniform([], 0 , 1)
-            im = tf.cond(do_flip > 0.5, lambda: tf.map_fn(lambda sim:tf.image.flip_left_right(sim), im), lambda : im)
+            def flip_one(sim):
+                do_flip = tf.random_uniform([], 0, 1)
+                return tf.cond(do_flip > 0.5, lambda: tf.image.flip_left_right(sim), lambda: sim)
+
+            im = tf.map_fn(lambda sim: flip_one(sim), im)
+            #im = tf.cond(do_flip > 0.5, lambda: tf.map_fn(lambda sim: tf.image.flip_left_right(sim),im), lambda : im)
             return im
 
         def augment_image_properties(im):
@@ -93,28 +97,34 @@ class DataLoader(object):
             brightness_seed = random.randint(0, 2**31 - 1)
             im = tf.image.random_brightness(im, 0.2, brightness_seed)
 
-            contrast_seed =  random.randint(0, 2**31 - 1)
+            contrast_seed = random.randint(0, 2 ** 31 - 1)
             im = tf.image.random_contrast(im, 0.8, 1.2, contrast_seed)
 
             num_img = np.int(im.get_shape().as_list()[-1] // 3)
 
-            saturation_seed = random.randint(0, 2**31 - 1)
+            # saturation_seed = random.randint(0, 2**31 - 1)
             saturation_im_list = []
+            saturation_factor = random.uniform(0.8,1.2) #tf.random_ops.random_uniform([], 0.8, 1.2, seed=saturation_seed)
             for i in range(num_img):
-                saturation_im_list.append(tf.image.random_saturation(im[:,:, 3*i: 3*(i+1)], 0.8, 1.2, seed=saturation_seed))
+                saturation_im_list.append(tf.image.adjust_saturation(im[:,:, 3*i: 3*(i+1)],saturation_factor))
+                # tf.image.random_saturation(im[:,:, 3*i: 3*(i+1)], 0.8, 1.2, seed=saturation_seed))
             im = tf.concat(saturation_im_list, axis=2)
 
-            hue_seed = random.randint(0, 2 ** 31 - 1)
+            #hue_seed = random.randint(0, 2 ** 31 - 1)
             hue_im_list = []
+            hue_delta = random.uniform(-0.1,0.1) #tf.random_ops.random_uniform([], -0.1, 0.1, seed=hue_seed)
             for i in range(num_img):
-                hue_im_list.append(
-                    tf.image.random_hue(im[:, :, 3 * i: 3 * (i + 1)], 0.1, seed=hue_seed))
+                hue_im_list.append(tf.image.adjust_hue(im[:, :, 3 * i: 3 * (i + 1)],hue_delta))
+                 #  tf.image.random_hue(im[:, :, 3 * i: 3 * (i + 1)], 0.1, seed=hue_seed))
             im = tf.concat(hue_im_list, axis=2)
             return im
 
         def random_augmentation(im):
-            do_aug = tf.random_uniform([], 0, 1)
-            im = tf.cond(do_aug > 0.5, lambda: tf.map_fn(lambda sim: augment_image_properties(sim), im), lambda: im)
+            def augmentation_one(sim):
+                do_aug = tf.random_uniform([], 0, 1)
+                return tf.cond(do_aug > 0.5, lambda: augment_image_properties(sim), lambda : sim)
+            im = tf.map_fn(lambda sim: augmentation_one(sim), im)
+            #im = tf.cond(do_aug > 0.5, lambda: tf.map_fn(lambda sim: augment_image_properties(sim), im), lambda: im)
             return im
 
         im = random_flip(im)
@@ -137,7 +147,9 @@ class DataLoader(object):
 
     def unpack_image_sequence(self, image_seq, img_height, img_width, num_source):
         # Assuming the center image is the target frame
+        #print(image_seq.get_shape().as_list())
         tgt_start_idx = int(img_width * (num_source//2))
+        # [h, w, 3]
         tgt_image = tf.slice(image_seq,
                              [0, tgt_start_idx, 0],
                              [-1, img_width, -1])
@@ -149,6 +161,8 @@ class DataLoader(object):
         src_image_2 = tf.slice(image_seq,
                                [0, int(tgt_start_idx + img_width), 0],
                                [-1, int(img_width * (num_source//2)), -1])
+
+        # in case there are more images than 3
         src_image_seq = tf.concat([src_image_1, src_image_2], axis=1)
         # Stack source frames along the color channels (i.e. [H, W, N*3])
         src_image_stack = tf.concat([tf.slice(src_image_seq,

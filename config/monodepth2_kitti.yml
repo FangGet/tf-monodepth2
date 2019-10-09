@@ -7,7 +7,7 @@ dataset:
     preprocess: True
 model:
     root_dir: ''
-    learning_rate: 1e-5
+    learning_rate: 1e-4
     batch_size: 8
     num_source: 3
     num_scales: 4
