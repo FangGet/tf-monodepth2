@@ -33,6 +33,12 @@ If you find this work useful in your research please consider citing author's pa
   year = {2018}
 }
 ```
+
+## Eval Result
+|  model_name  | abs_rel | sq_rel | rms | log_rms | δ<1.25 | δ<1.25^2 | δ<1.25^3 |
+|  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |
+| `mono_no_pt_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
+
 ## Demonstration
 <p align="center">
 <a href="https://www.youtube.com/watch?v=TUgaPZgdEys
@@ -99,10 +105,6 @@ Note: please use python2 to execute this bash.
 <font color="red">kitti_eval code from Zhou's SFMLearner</font>
 
 Pose evaluation code to be completed.
-
-|  model_name  | abs_rel | sq_rel | rms | log_rms | δ<1.25 | δ<1.25^2 | δ<1.25^3 |
-|  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |
-| `mono_no_pt_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
 
 ## Reference Codes
 - Monodepth2
