@@ -37,7 +37,7 @@ If you find this work useful in your research please consider citing author's pa
 ## Eval Result
 |  model_name  | abs_rel | sq_rel | rms | log_rms | δ<1.25 | δ<1.25^2 | δ<1.25^3 |
 |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |
-| `mono_no_pt_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
+| `mono_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
 
 ## Demonstration
 <p align="center">
