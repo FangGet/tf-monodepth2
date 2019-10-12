@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
 from tensorflow import layers as tfl
+from tensorflow.contrib.layers import variance_scaling_initializer
 
 class Net(object):
     def __init__(self,is_training, **config):
@@ -22,7 +23,7 @@ class Net(object):
             end_points_collection = scope.original_name_scope + '_end_points'
             with slim.arg_scope([slim.conv2d],
                                 normalizer_fn=None,
-                                weights_initializer=tf.keras.initializers.he_normal(),
+                                weights_initializer=variance_scaling_initializer(factor=0.01, mode='FAN_OUT'),
                                 activation_fn=tf.nn.elu,
                                 outputs_collections=end_points_collection):
                 filters = [16, 32, 64, 128, 256]
@@ -164,10 +165,10 @@ class Net(object):
                 short_cut = self._conv(x, 1, out_channel, stride, name='shortcut')
             # residual
             x = self._conv(x, 3, out_channel, stride, name='conv1')
-            x = self._bn(x)
+            x = self._bn(x, name='BatchNorm')
             x = self._activate(x, type='relu', name='relu1')
             x = self._conv(x, 3, out_channel, 1, name='conv2')
-            x = self._bn(x)
+            x = self._bn(x, name='BatchNorm_1')
 
             x = x + short_cut
             x = self._activate(x, type='relu', name='relu2')
@@ -179,10 +180,10 @@ class Net(object):
             print('\tBuildint residual unit: {}'.format(scope.name))
             short_cut = x
             x= self._conv(x, 3, num_channel, 1, name='conv1')
-            x = self._bn(x)
+            x = self._bn(x, name='BatchNorm')
             x = self._activate(x,type='relu', name='relu1')
             x = self._conv(x, 3, num_channel, 1, name='conv2')
-            x = self._bn(x)
+            x = self._bn(x, name='BatchNorm_1')
 
             x = x + short_cut
             x = self._activate(x, type='relu', name='relu2')
@@ -198,9 +199,9 @@ class Net(object):
         x = slim.conv2d(pad_x, out_channel, [filter_size, filter_size], stride, padding='VALID', scope=name, activation_fn=activation_fn)
         return x
 
-    def _bn(self, x):
+    def _bn(self, x, name='BatchNorm'):
         #x = slim.batch_norm(x,scale=True,decay=self.decay, epsilon=self.epsilon, is_training=True)#, updates_collections=None)
-        x = tfl.batch_normalization(x,momentum=self.decay,epsilon=self.epsilon,training=True, name='BatchNorm', fused=True,reuse=tf.AUTO_REUSE) 
+        x = tfl.batch_normalization(x,momentum=self.decay,epsilon=self.epsilon,training=self.is_training, name=name, fused=True,reuse=tf.AUTO_REUSE)
         return x
 
     def _activate(self, x, type='relu', name='relu'):

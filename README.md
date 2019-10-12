@@ -1,11 +1,5 @@
 # tf-monodepth2
 
-<b>Update:</b>  <font color="red">2019-10-09: 1) fix small bug to get better results; </font>
-
-<b>Right now, BatchNormalization is not fixed, we evaluate depth with is_training = True, trying to fix it!</b>
-
-Update:  <font color="red">2019-09-23: 1) modify pose decoder to be consistent with original monodepth2; 2)add evaluate code for estimated depth</font>
-
 This is tensorflow(unofficial) implementation for the method in
 
 > **Digging into Self-Supervised Monocular Depth Prediction**
@@ -17,8 +11,13 @@ This is tensorflow(unofficial) implementation for the method in
 <p align="center">
   <img src="assets/tf-monodepth2.gif" alt="example input output gif" width="600" />
 </p>
-
 Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner) and [SuperPoint](https://github.com/rpautrat/SuperPoint)
+
+
+
+<b>Current pretrained model result is slightly low than paper.</b>
+
+
 
 If you find this work useful in your research please consider citing author's paper:
 
@@ -34,10 +33,14 @@ If you find this work useful in your research please consider citing author's pa
 }
 ```
 
-## Eval Result
+## Eval Result (with pretrained model link)
 |  model_name  | abs_rel | sq_rel | rms | log_rms | δ<1.25 | δ<1.25^2 | δ<1.25^3 |
 |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |  ----  |
-| `mono_640x192` | 0.1334 | 0.9895 | 5.1247 | 0.2084 | 0.8402 | 0.9480 | 0.9785 |
+| mono_640x192_nopt(paper) | 0.132 | 1.044 | 5.142 | 0.210 | 0.845 | 0.948 | 0.977 |
+| [mono_640x192_nopt(ours)](https://drive.google.com/file/d/13jYuDrHiK9uoRmu1rXUxSBv-yEx6tzWJ/view?usp=sharing) | 0.139 | 1.1293 | 5.4190 | 0.2200 | 0.8299 | 0.9419 | 0.9744 |
+| `mono_640x192_pt(paper)` | 0.115 | 0.903 | 4.863 | 0.193 | 0.877 | 0.959 | 0.982 |
+| [mono_640x192_pt(ours)](https://drive.google.com/file/d/1Bk9gMrzuF_QrDRv11ILrqv3xHvqxZR2a/view?usp=sharing) | 0.120 | 0.8702 | 4.888 | 0.194 | 0.861 | 0.957 | 0.982 |
+
 
 ## Demonstration
 <p align="center">

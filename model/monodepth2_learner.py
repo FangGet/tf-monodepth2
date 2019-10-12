@@ -108,7 +108,7 @@ class MonoDepth2Learner(object):
 
                 if self.pose_type == 'seperate':
                     res18_ctp, _ = net_builder.build_resnet18(
-                        tf.concat([tgt_image_net,src_image_stack_net[:, :, :, :3]], axis=3),
+                        tf.concat([src_image_stack_net[:, :, :, :3], tgt_image_net], axis=3),
                         prefix='pose_'
                     )
                     res18_ctn, _ = net_builder.build_resnet18(
@@ -176,7 +176,7 @@ class MonoDepth2Learner(object):
             elif self.pose_type == 'shared':
                 res18_tp, _ = net_builder.build_resnet18(src_image_stack_net[:, :, :, :3])
                 res18_tn, _ = net_builder.build_resnet18(src_image_stack_net[:, :, :, 3:])
-                res18_ctp = tf.concat([res18_tc, res18_tp], axis=3)
+                res18_ctp = tf.concat([res18_tp, res18_tc], axis=3)
                 res18_ctn = tf.concat([res18_tc, res18_tn], axis=3)
             else:
                 raise NotImplementedError
@@ -253,12 +253,12 @@ class MonoDepth2Learner(object):
 
                 reprojection_loss = tf.reduce_mean(tf.reduce_min(combined, axis=3))
 
-
-
                 pixel_losses += reprojection_loss
 
-                smooth_loss = self.get_smooth_loss(pred_disp[s], tgt_image_pyramid[s]) / (2 ** s)
+                smooth_loss = self.get_smooth_loss(pred_disp[s], tgt_image_pyramid[s])
                 smooth_losses += smooth_loss
+                smooth_loss /= (2 ** s)
+
                 scale_total_loss = reprojection_loss + self.smoothness_ratio * smooth_loss
                 total_loss += scale_total_loss
 
@@ -276,19 +276,12 @@ class MonoDepth2Learner(object):
             self.global_step = tf.Variable(0,name='global_step',trainable=False)
             learning_rates = [self.start_learning_rate, self.start_learning_rate / 10 ]
             boundaries = [np.int(self.total_step * 3 / 4)]
-            learning_rate = tf.train.piecewise_constant(self.global_step, boundaries, learning_rates)
-            optimizer = tf.train.AdamOptimizer(learning_rate, self.beta1)
+            self.learning_rate = tf.train.piecewise_constant(self.global_step, boundaries, learning_rates)
+            optimizer = tf.train.AdamOptimizer(self.learning_rate, self.beta1)
 
             update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
             with tf.control_dependencies(update_ops):
-                #train_op = slim.learning.create_train_op(total_loss, optimizer, global_step)
                 self.train_op = optimizer.minimize(total_loss, global_step=self.global_step)
-
-                #self.train_op = slim.learning.create_train_op(total_loss, optimizer,self.global_step)
-            #update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            #if update_ops:
-                #updates = tf.group(*update_ops)
-                #total_loss = control_flow_ops.with_dependencies([updates], total_loss)
 
             self.incr_global_step = tf.assign(self.global_step,self.global_step + 1)
 
@@ -305,8 +298,6 @@ class MonoDepth2Learner(object):
         self.proj_image_stack_all = proj_image_stack_all
         self.proj_error_stack_all = proj_error_stack_all
         if self.auto_mask:
-            # self.pred_auto_masks1 = pred_auto_masks1
-            # self.pred_auto_masks2 = pred_auto_masks2
             self.pred_auto_masks = pred_auto_masks
 
     def collect_summaries(self):
@@ -347,13 +338,24 @@ class MonoDepth2Learner(object):
         var_list += tf.trainable_variables()
         self.saver = tf.train.Saver(var_list + [self.global_step],max_to_keep=10)
         sv = tf.train.Supervisor(logdir=ckpt_dir,save_summaries_secs=0,saver=None)
-        print('/n/n/nCollections=====================',tf.get_collection(tf.GraphKeys.UPDATE_OPS))
+        # print('/n/n/nCollections=====================',tf.get_collection(tf.GraphKeys.UPDATE_OPS))
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
         with sv.managed_session(config=config) as sess:
-            print('Trainable variables: ')
-            for var in var_list:
-                print(var.name)
+            # print('Trainable variables: ')
+            # for var in var_list:
+            #     print(var.name)
+            #
+            # print('\n\n==========================================')
+            # print('Model variables:')
+            # for var in tf.model_variables():
+            #     print(var.name)
+            #
+            # print('\n\n==========================================')
+            # print('Global variables:')
+            # for var in tf.global_variables():
+            #     print(var.name)
+
             print("parameter_count =", sess.run(parameter_count))
             sess.run(init)
 
@@ -367,7 +369,7 @@ class MonoDepth2Learner(object):
 
             start_time = time.time()
             try:
-                for step in range(1, self.total_step):
+                for step in range(0, self.total_step):
                     fetches = {
                         "train": self.train_op,
                         "global_step": self.global_step,
@@ -379,6 +381,7 @@ class MonoDepth2Learner(object):
                         fetches["pixel_loss"] = self.pixel_loss
                         fetches["smooth_loss"] = self.smooth_loss
                         fetches["summary"] = sv.summary_op
+                        fetches["lr"] = self.learning_rate
 
                     results = sess.run(fetches)
                     gs = results["global_step"]
@@ -387,10 +390,10 @@ class MonoDepth2Learner(object):
                         sv.summary_writer.add_summary(results["summary"], gs)
                         train_epoch = math.ceil(gs / self.steps_per_epoch)
                         train_step = gs - (train_epoch - 1) * self.steps_per_epoch
-                        print("Epoch: [{}] | [{}/{}] | time: {:.4f} s/it | loss: {:.4f} pixel_loss: {:.4f} smooth_loss: {:.4f} ".format
+                        print("Epoch: [{}] | [{}/{}] | time: {:.4f} s/it | loss: {:.4f} pixel_loss: {:.4f} smooth_loss: {:.4f} | lr: {:.5f}".format
                                 (train_epoch, train_step, self.steps_per_epoch,
                                     (time.time() - start_time)/self.summary_freq,
-                                 results["loss"], results["pixel_loss"], results["smooth_loss"]))
+                                 results["loss"], results["pixel_loss"], results["smooth_loss"], results["lr"]))
                         start_time = time.time()
 
                     if step != 0 and step % (self.steps_per_epoch * 2) == 0:
@@ -442,8 +445,8 @@ class MonoDepth2Learner(object):
             #pred_all.append(pred_depth)
             cv2.waitKey()
 
-        print(np.array(pred_all).shape,'--------------------------')
         pred_all = pred_all[:len(test_files)]
+        print(np.array(pred_all).shape, '--------------------------')
         np.save(output_file,pred_all)
 
     def eval_pose(self,sess, ckpt_name):
@@ -456,8 +459,8 @@ class MonoDepth2Learner(object):
         var_list += tf.trainable_variables()
         self.saver = tf.train.Saver(var_list, max_to_keep=10)
 
-        for var in var_list:
-            print(var)
+        # for var in var_list:
+        #     print(var)
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
@@ -483,8 +486,8 @@ class MonoDepth2Learner(object):
         var_list += tf.trainable_variables()
         self.saver = tf.train.Saver(var_list, max_to_keep=10)
 
-        for var in tf.model_variables():
-            print(var)
+        # for var in tf.model_variables():
+        #     print(var)
 
 
         config = tf.ConfigProto()
@@ -502,11 +505,12 @@ class MonoDepth2Learner(object):
 
             self.saver.restore(sess, latest_ckpt)
 
-            file_list = self.loader.format_file_list(self.loader.dataset_dir, 'test')
+            file_list = self.loader.format_file_list(self.loader.dataset_dir, 'val')
 
             image_lists = file_list['image_file_list']
 
             import cv2
+            # vid = cv2.VideoWriter('./result/depth.mp4', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), float(30), (640,576), True)
             for step in range(1, len(image_lists)):
 
                 image = cv2.imread(image_lists[step])
@@ -550,6 +554,8 @@ class MonoDepth2Learner(object):
 
 
                 cv2.imshow('depth',toshow_image)
+                # vid.write(toshow_image)
+                #cv2.imwrite('./result/predicted_depth/depth_{}.png'.format(step), toshow_image)
                 cv2.waitKey(30)
 
 
