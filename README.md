@@ -42,7 +42,7 @@ If you find this work useful in your research please consider citing author's pa
 | [mono_640x192_pt(ours)](https://drive.google.com/file/d/1Bk9gMrzuF_QrDRv11ILrqv3xHvqxZR2a/view?usp=sharing) | 0.120 | 0.8702 | 4.888 | 0.194 | 0.861 | 0.957 | 0.982 |
 
 
-## Demonstration
+## Demonstration (Click Image For Youtube Video)
 <p align="center">
 <a href="https://www.youtube.com/watch?v=TUgaPZgdEys
 " target="_blank"><img src="assets/depth_start.png"
@@ -89,8 +89,7 @@ python monodepth2.py train config/monodepth2_kitti.yml your_saved_model_name
 python monodepth2.py test config/monodepth2_kitti.yml your_pretrained_model_name
 ```
 
-~~Pretrained model download link: [monodepth2_416*128_mono](https://drive.google.com/file/d/1oALNcevZSEvDHkjF1NX1Jf7JExWW52k-/view)~~
-<font color="red">Pretrained model will be uploaded soon. Former model is no longer suitable for this code.</font>
+<font color="red">Get pretrained model download link from Eval Result chart</font>
 
 ## Evaluation
 * First we need to save predicted depth image into npy file
