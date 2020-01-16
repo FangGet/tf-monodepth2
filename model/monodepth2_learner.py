@@ -532,7 +532,7 @@ class MonoDepth2Learner(object):
                     'poses':self.pred_poses
                 }
 
-                results = sess.run(fetches,feed_dict={self.tgt_image:tgt_image_np, self.src_image_stack: src_image_stack})
+                results = sess.run(fetches,feed_dict={self.tgt_image_uint8:tgt_image_np, self.src_image_stack_uint8: src_image_stack})
 
                 disp_resized_np = np.squeeze(results['disp'])
                 vmax = np.percentile(disp_resized_np, 95)

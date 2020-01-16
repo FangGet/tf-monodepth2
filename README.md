@@ -15,6 +15,10 @@ Code mainly based on [SFMLearner](https://github.com/tinghuiz/SfMLearner) and [S
 
 
 
+<b>Update: fix testing bug for input data normalization, thanks @JiatianWu </b>
+
+
+
 <b>Current pretrained model result is slightly low than paper.</b>
 
 
